@@ -38,10 +38,6 @@
 # 	--name: ${FILE%%.*}
 
 
-# TODO: implement --display option to see contents of a specific entry
-# TODO: implement --list option to list all known desktop entries
-
-
 
 function parse_option(){
 
@@ -90,7 +86,7 @@ OPTS["ACTION"]="INSTALL"
 
 TEMP=$(getopt \
 	-o 'n:e:i:Tt:Gc:m:w:d:f:' \
-	-l 'install,modify,remove,file:,name:,exec:,icon:,terminal,type:, \
+	-l 'install,modify,remove,display,list,file:,name:,exec:,icon:,terminal,type:, \
 	non-default-gpu,categories:,mimetype:,wmclass:,dir:' \
 	-n "$0" -- "$@")
 
@@ -116,6 +112,16 @@ while true; do
 			;;
 		"--remove")
 			OPTS["ACTION"]="REMOVE"
+			shift
+			continue
+			;;
+		"--display")
+			OPTS["ACTION"]="DISPLAY"
+			shift
+			continue
+			;;
+		"--list")
+			OPTS["ACTION"]="LIST"
 			shift
 			continue
 			;;
@@ -267,9 +273,7 @@ elif [[ "${OPTS["ACTION"]}" = "MODIFY" ]]; then
 	fi
 
 	for key in "${!GIVEN[@]}"; do
-	#	grep "$key" "${OPTS["FPATH"]}"
 		opt="$(parse_option "${OPTS["$key"]}")"
-		echo "$opt ,___, debug"
 		sed -i -r "s/$key.*/$key=$opt/" "${OPTS["FPATH"]}"
 	done
 	
@@ -289,7 +293,22 @@ elif [[ "${OPTS["ACTION"]}" = "REMOVE" ]]; then
 		echo "File ${OPTS["FILE"]} has been removed"
 		exit 0
 	fi
+elif [[ "${OPTS["ACTION"]}" = "DISPLAY" ]]; then
+	
+	if [[ -f "${OPTS["FPATH"]}" ]]; then
+		cat "${OPTS["FPATH"]}"
+	else
+		echo "File does not exist"
+		exit 3
+	fi
+elif [[ "${OPTS["ACTION"]}" = "LIST" ]]; then
 
+	if [[ -d "${OPTS["INSTALL_DIR"]}" ]]; then
+		ls -A "${OPTS["INSTALL_DIR"]}"
+	else
+		echo "Directory does not exist"
+		exit 3
+	fi
 else
 	echo "invalid option."
 	echo "Valid options are:"
