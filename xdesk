@@ -38,6 +38,26 @@
 # 	--name: ${FILE%%.*}
 
 
+function parse_option(){
+
+	# Parses the opt value so to prevent issues with sed
+
+	value="$1"
+	lookup="/"
+	new_value=""
+	for (( i=0; i<${#value}; i++ )); do
+		x="$(echo "$lookup" | grep -F "${value:i:1}")"
+		if [[ -n "$x" ]]; then
+			new_value+="\\${value:i:1}"
+			continue
+		fi
+		new_value+="${value:i:1}"
+	done
+	echo "$new_value"
+}
+
+
+
 declare -A OPTS      # Stores option values.
 declare -A GIVEN     # This tracks whether or not an option was given by the user
 		     # In order to avoid changing options that were not given, 
@@ -243,7 +263,9 @@ elif [[ "${OPTS["ACTION"]}" = "MODIFY" ]]; then
 
 	for key in "${!GIVEN[@]}"; do
 	#	grep "$key" "${OPTS["FPATH"]}"
-		sed -i -r "s/$key.*/$key=${OPTS["$key"]}/" "${OPTS["FPATH"]}"
+		opt="$(parse_option "${OPTS["$key"]}")"
+		echo "$opt ,___, debug"
+		sed -i -r "s/$key.*/$key=$opt/" "${OPTS["FPATH"]}"
 	done
 	
 	cat "${OPTS["FPATH"]}"
