@@ -38,6 +38,11 @@
 # 	--name: ${FILE%%.*}
 
 
+# TODO: implement --display option to see contents of a specific entry
+# TODO: implement --list option to list all known desktop entries
+
+
+
 function parse_option(){
 
 	# Parses the opt value so to prevent issues with sed
