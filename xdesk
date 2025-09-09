@@ -61,13 +61,15 @@ function parse_option(){
 
 
 
+declare -A VARS      # utilities like install_dir, file etc
 declare -A OPTS      # Stores option values.
 declare -A GIVEN     # This tracks whether or not an option was given by the user
 		     # In order to avoid changing options that were not given, 
 		     # and are different in the file from the default values.
 
 # Variables that will hold default values
-OPTS["INSTALL_DIR"]="$HOME/.local/share/applications"
+VARS["INSTALL_DIR"]="$HOME/.local/share/applications"
+
 OPTS["Type"]="Application"
 OPTS["Terminal"]="false"
 OPTS["PrefersNonDefaultGPU"]="true"
@@ -81,10 +83,10 @@ OPTS["StartupWMClass"]=""
 OPTS["Icon"]=""
 
 # Required
-OPTS["FILE"]=""
+VARS["FILE"]=""
 
 # Action
-OPTS["ACTION"]="INSTALL"
+VARS["ACTION"]="INSTALL"
 
 TEMP=$(getopt \
 	-o 'n:e:i:Tt:Gc:m:w:d:f:' \
@@ -103,27 +105,27 @@ unset TEMP
 while true; do
 	case "$1" in
 		"--install")
-			OPTS["ACTION"]="INSTALL"
+			VARS["ACTION"]="INSTALL"
 			shift
 			continue
 			;;
 		"--modify")
-			OPTS["ACTION"]="MODIFY"
+			VARS["ACTION"]="MODIFY"
 			shift
 			continue
 			;;
 		"--remove")
-			OPTS["ACTION"]="REMOVE"
+			VARS["ACTION"]="REMOVE"
 			shift
 			continue
 			;;
 		"--display")
-			OPTS["ACTION"]="DISPLAY"
+			VARS["ACTION"]="DISPLAY"
 			shift
 			continue
 			;;
 		"--list")
-			OPTS["ACTION"]="LIST"
+			VARS["ACTION"]="LIST"
 			shift
 			continue
 			;;
@@ -131,7 +133,7 @@ while true; do
 			FILE="$(basename $2)"
 			FILE="${FILE%%.*}"
 			FILE="${FILE}.desktop"
-			OPTS["FILE"]="$FILE"
+			VARS["FILE"]="$FILE"
 			unset FILE
 
 			shift 2
@@ -210,7 +212,7 @@ while true; do
 			continue
 			;;
 		"-d" | "--dir")
-			OPTS["INSTALL_DIR"]="$2"
+			VARS["INSTALL_DIR"]="$2"
 			shift 2
 			continue
 			;;
@@ -225,12 +227,12 @@ while true; do
 	esac
 done
 
-OPTS["FPATH"]="${OPTS["INSTALL_DIR"]}/${OPTS["FILE"]}"
+VARS["FPATH"]="${VARS["INSTALL_DIR"]}/${VARS["FILE"]}"
 
-if [[ "${OPTS["ACTION"]}" = "INSTALL" ]]; then
+if [[ "${VARS["ACTION"]}" = "INSTALL" ]]; then
 	echo "install..."
 
-	if [[ -f "${OPTS["FPATH"]}" ]]; then
+	if [[ -f "${VARS["FPATH"]}" ]]; then
 		echo "file exists. try --modify instead"
 		exit 4
 	fi
@@ -242,77 +244,69 @@ if [[ "${OPTS["ACTION"]}" = "INSTALL" ]]; then
 	fi
 
 	if [[ "${OPTS["Exec"]}" = "" ]]; then
-		OPTS["Exec"]="$HOME/.local/bin/${OPTS["FILE"]}"
+		OPTS["Exec"]="$HOME/.local/bin/${VARS["FILE"]}"
 		if ! [[ -f "${OPTS["Exec"]}" ]]; then
-			echo "Executable for ${OPTS["FILE"]} not located."
+			echo "Executable for ${VARS["FILE"]} not located."
 			echo "Please note if --exec is not given, it defaults to ~/.local/bin"
 			echo "Cancelled."
 			exit -55
 		fi
 	fi
 
-	touch "${OPTS["FPATH"]}"
-	echo "[Desktop Entry]" > "${OPTS["FPATH"]}"
-	echo "Name=${OPTS["Name"]}" >> "${OPTS["FPATH"]}"
-	echo "Type=${OPTS["Type"]}" >> "${OPTS["FPATH"]}"
-	echo "Terminal=${OPTS["Terminal"]}" >> "${OPTS["FPATH"]}"
-	echo "PrefersNonDefaultGPU=${OPTS["PrefersNonDefaultGPU"]}" >> "${OPTS["FPATH"]}"
-	echo "Icon=${OPTS["Icon"]}" >> "${OPTS["FPATH"]}"
-	echo "Exec=${OPTS["Exec"]}" >> "${OPTS["FPATH"]}"
-	echo "Categories=${OPTS["Categories"]}" >> "${OPTS["FPATH"]}"
-	echo "MimeType=${OPTS["MimeType"]}" >> "${OPTS["FPATH"]}"
-	echo "StartupWMClass=${OPTS["StartupWMClass"]}" >> "${OPTS["FPATH"]}"
+	touch "${VARS["FPATH"]}"
+	echo "[Desktop Entry]" > "${VARS["FPATH"]}"
 
+	for key in "${!OPTS[@]}"; do
+		echo "$key=${OPTS["$key"]}" >> "${VARS["FPATH"]}"
+	done
 
-	
-
-elif [[ "${OPTS["ACTION"]}" = "MODIFY" ]]; then
+elif [[ "${VARS["ACTION"]}" = "MODIFY" ]]; then
 	echo "modify..."
-	if ! [[ -f "${OPTS["FPATH"]}" ]]; then
+	if ! [[ -f "${VARS["FPATH"]}" ]]; then
 		echo "file does not exist. Try --install instead"
 		exit 4
 	fi
 
 	for key in "${!GIVEN[@]}"; do
 
-		if [[ -n "$(cat ${OPTS["FPATH"]} | grep "$key")" ]]; then
+		if [[ -n "$(cat ${VARS["FPATH"]} | grep "$key")" ]]; then
 			opt="$(parse_option "${OPTS["$key"]}")"
-			sed -i -r "s/$key.*/$key=$opt/" "${OPTS["FPATH"]}"
+			sed -i -r "s/$key.*/$key=$opt/" "${VARS["FPATH"]}"
 		else
 			opt="${OPTS["$key"]}"
-			echo "$key=$opt" >> "${OPTS["FPATH"]}"
+			echo "$key=$opt" >> "${VARS["FPATH"]}"
 		fi
 
 	done
 	
-	cat "${OPTS["FPATH"]}"
+	cat "${VARS["FPATH"]}"
 
 
-elif [[ "${OPTS["ACTION"]}" = "REMOVE" ]]; then
+elif [[ "${VARS["ACTION"]}" = "REMOVE" ]]; then
 	
-	if [[ "${OPTS["FILE"]: -8}" != ".desktop" ]]; then
+	if [[ "${VARS["FILE"]: -8}" != ".desktop" ]]; then
 		echo "Not a desktop entry"
 		exit -9
-	elif ! [[ -f "${OPTS["FPATH"]}" ]]; then
+	elif ! [[ -f "${VARS["FPATH"]}" ]]; then
 		echo "File does not exist"
 		exit 3
 	else
-		rm "${OPTS["FPATH"]}"
-		echo "File ${OPTS["FILE"]} has been removed"
+		rm "${VARS["FPATH"]}"
+		echo "File ${VARS["FILE"]} has been removed"
 		exit 0
 	fi
-elif [[ "${OPTS["ACTION"]}" = "DISPLAY" ]]; then
+elif [[ "${VARS["ACTION"]}" = "DISPLAY" ]]; then
 	
-	if [[ -f "${OPTS["FPATH"]}" ]]; then
-		cat "${OPTS["FPATH"]}"
+	if [[ -f "${VARS["FPATH"]}" ]]; then
+		cat "${VARS["FPATH"]}"
 	else
 		echo "File does not exist"
 		exit 3
 	fi
-elif [[ "${OPTS["ACTION"]}" = "LIST" ]]; then
+elif [[ "${VARS["ACTION"]}" = "LIST" ]]; then
 
-	if [[ -d "${OPTS["INSTALL_DIR"]}" ]]; then
-		ls -A "${OPTS["INSTALL_DIR"]}"
+	if [[ -d "${VARS["INSTALL_DIR"]}" ]]; then
+		ls -A "${VARS["INSTALL_DIR"]}"
 	else
 		echo "Directory does not exist"
 		exit 3
@@ -327,7 +321,7 @@ else
 fi
 
 
-#echo "INSTALL_DIR = ${OPTS["INSTALL_DIR"]}"
+#echo "INSTALL_DIR = ${VARS["INSTALL_DIR"]}"
 #echo "TYPE = ${OPTS["Type"]}"
 #echo "TERMINAL = ${OPTS["Terminal"]}"
 #echo "PREFERSNDGPU = ${OPTS["PrefersNonDefaultGPU"]}"
@@ -337,8 +331,8 @@ fi
 #echo "CATEGORIES = ${OPTS["Categories"]}"
 #echo "MIMETYPE = ${OPTS["MimeType"]}"
 #echo "WMCLASS = ${OPTS["StartupWMClass"]}"
-#echo "FILE = ${OPTS["FILE"]}"
-#echo "ACTION = ${OPTS["ACTION"]}"
+#echo "FILE = ${VARS["FILE"]}"
+#echo "ACTION = ${VARS["ACTION"]}"
 
 
 
