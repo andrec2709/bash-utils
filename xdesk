@@ -4,7 +4,6 @@
 # Structure of command:
 #
 # 	xdesk ACTION [OPTS] --file FILE
-# 	xdesk --remove [-d --dir DIR] --file FILE
 # 
 # --file: target for the .desktop entry
 #
@@ -18,19 +17,19 @@
 # 	-c --categories: .desktop Categories key
 # 	-m --mimetype: .desktop MimeType key
 # 	-w --wmclass: .desktop StartupWMClass key
-# 	-d --dir: .desktop entry location
+# 	-d --dir: .desktop entry location;
 #
 # ACTIONS are:
 # 	--install: create a new .desktop entry
 # 	--modify: modify existing .desktop entry
 # 	--remove: remove a .desktop entry
+# 	--display: content of entry
+# 	--list: entries in dir
 #
-# 	Note the --remove action can only take the --dir option indicating where the entry is located. If anything else is passed the script will return an error. --dir defaults to INSTALL_DIR
 #
 # Defaults:
 #
 # 	--dir: Defaults to $HOME/.local/share/applications
-# 	--icon: Defaults to $HOME/.local/share/icons (in the format ${FILE%%.*}.png)
 # 	--type: Defaults to "Application"
 # 	--terminal: false
 # 	--non-default-gpu: true
@@ -46,7 +45,9 @@ function parse_option(){
 	value="$1"
 	lookup="/"
 	new_value=""
+
 	for (( i=0; i<${#value}; i++ )); do
+
 		x="$(echo "$lookup" | grep -F "${value:i:1}")"
 		if [[ -n "$x" ]]; then
 			new_value+="\\${value:i:1}"
@@ -54,6 +55,7 @@ function parse_option(){
 		fi
 		new_value+="${value:i:1}"
 	done
+
 	echo "$new_value"
 }
 
@@ -266,15 +268,21 @@ if [[ "${OPTS["ACTION"]}" = "INSTALL" ]]; then
 
 elif [[ "${OPTS["ACTION"]}" = "MODIFY" ]]; then
 	echo "modify..."
-	
 	if ! [[ -f "${OPTS["FPATH"]}" ]]; then
 		echo "file does not exist. Try --install instead"
 		exit 4
 	fi
 
 	for key in "${!GIVEN[@]}"; do
-		opt="$(parse_option "${OPTS["$key"]}")"
-		sed -i -r "s/$key.*/$key=$opt/" "${OPTS["FPATH"]}"
+
+		if [[ -n "$(cat ${OPTS["FPATH"]} | grep "$key")" ]]; then
+			opt="$(parse_option "${OPTS["$key"]}")"
+			sed -i -r "s/$key.*/$key=$opt/" "${OPTS["FPATH"]}"
+		else
+			opt="${OPTS["$key"]}"
+			echo "$key=$opt" >> "${OPTS["FPATH"]}"
+		fi
+
 	done
 	
 	cat "${OPTS["FPATH"]}"
