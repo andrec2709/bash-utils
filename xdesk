@@ -1,0 +1,291 @@
+#!/bin/bash
+# Create .desktop entry (v2)
+
+# Structure of command:
+#
+# 	xdesk ACTION [OPTS] --file FILE
+# 	xdesk --remove [-d --dir DIR] --file FILE
+# 
+# --file: target for the .desktop entry
+#
+# OPTS are:
+# 	-n --name: .desktop Name key
+# 	-e --exec: .desktop Exec key
+# 	-i --icon: [...]
+# 	-T --terminal: sets Terminal key to true
+# 	-t --type: .desktop Type key
+# 	-G --non-default-GPU: sets PrefersNonDefaultGPU key to false
+# 	-c --categories: .desktop Categories key
+# 	-m --mimetype: .desktop MimeType key
+# 	-w --wmclass: .desktop StartupWMClass key
+# 	-d --dir: .desktop entry location
+#
+# ACTIONS are:
+# 	--install: create a new .desktop entry
+# 	--modify: modify existing .desktop entry
+# 	--remove: remove a .desktop entry
+#
+# 	Note the --remove action can only take the --dir option indicating where the entry is located. If anything else is passed the script will return an error. --dir defaults to INSTALL_DIR
+#
+# Defaults:
+#
+# 	--dir: Defaults to $HOME/.local/share/applications
+# 	--icon: Defaults to $HOME/.local/share/icons (in the format ${FILE%%.*}.png)
+# 	--type: Defaults to "Application"
+# 	--terminal: false
+# 	--non-default-gpu: true
+# 	--exec: FILE
+# 	--name: ${FILE%%.*}
+
+
+declare -A OPTS      # Stores option values.
+declare -A GIVEN     # This tracks whether or not an option was given by the user
+		     # In order to avoid changing options that were not given, 
+		     # and are different in the file from the default values.
+
+# Variables that will hold default values
+OPTS["INSTALL_DIR"]="$HOME/.local/share/applications"
+OPTS["Type"]="Application"
+OPTS["Terminal"]="false"
+OPTS["PrefersNonDefaultGPU"]="true"
+OPTS["Exec"]=""
+OPTS["Name"]=""
+
+# Non-default, optional
+OPTS["Categories"]=""
+OPTS["MimeType"]=""
+OPTS["StartupWMClass"]=""
+OPTS["Icon"]=""
+
+# Required
+OPTS["FILE"]=""
+
+# Action
+OPTS["ACTION"]="INSTALL"
+
+TEMP=$(getopt \
+	-o 'n:e:i:Tt:Gc:m:w:d:f:' \
+	-l 'install,modify,remove,file:,name:,exec:,icon:,terminal,type:, \
+	non-default-gpu,categories:,mimetype:,wmclass:,dir:' \
+	-n "$0" -- "$@")
+
+if [[ $? -ne 0 ]]; then
+	echo "" >&2
+	exit 1
+fi
+
+eval set -- "$TEMP"
+unset TEMP
+
+while true; do
+	case "$1" in
+		"--install")
+			OPTS["ACTION"]="INSTALL"
+			shift
+			continue
+			;;
+		"--modify")
+			OPTS["ACTION"]="MODIFY"
+			shift
+			continue
+			;;
+		"--remove")
+			OPTS["ACTION"]="REMOVE"
+			shift
+			continue
+			;;
+		"-f" | "--file")
+			FILE="$(basename $2)"
+			FILE="${FILE%%.*}"
+			FILE="${FILE}.desktop"
+			OPTS["FILE"]="$FILE"
+			unset FILE
+
+			shift 2
+			continue
+			;;
+		"-n" | "--name")
+			OPTS["Name"]="$2"
+
+			GIVEN["Name"]="true"
+
+			shift 2
+			continue
+			;;
+		"-e" | "--exec")
+			OPTS["Exec"]="$2"
+
+			GIVEN["Exec"]="true"
+
+			shift 2
+			continue
+			;;
+		"-i" | "--icon")
+			OPTS["Icon"]="$2"
+
+			GIVEN["Icon"]="true"
+			
+			shift 2
+			continue
+			;;
+		"-T" | "--terminal")
+			OPTS["Terminal"]="true"
+
+			GIVEN["Terminal"]="true"
+			
+			shift
+			continue
+			;;
+		"-t" | "--type")
+			OPTS["Type"]="$2"
+
+			GIVEN["Type"]="true"
+			
+			shift 2
+			continue
+			;;
+		"-G" | "--non-default-gpu")
+			OPTS["PrefersNonDefaultGPU"]="false"
+
+			GIVEN["PrefersNonDefaultGPU"]="true"
+			
+			shift
+			continue
+			;;
+		"-c" | "--categories")
+			OPTS["Categories"]="$2"
+			
+			GIVEN["Categories"]="true"
+
+			shift 2
+			continue
+			;;
+		"-m" | "--mimetype")
+			OPTS["MimeType"]="$2"
+			
+			GIVEN["MimeType"]="true"
+
+			shift 2
+			continue
+			;;
+		"-w" | "--wmclass")
+			OPTS["StartupWMClass"]="$2"
+			
+			GIVEN["StartupWMClass"]="true"
+
+			shift 2
+			continue
+			;;
+		"-d" | "--dir")
+			OPTS["INSTALL_DIR"]="$2"
+			shift 2
+			continue
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			echo "invalid arg $1"
+			exit 1
+			;;
+	esac
+done
+
+OPTS["FPATH"]="${OPTS["INSTALL_DIR"]}/${OPTS["FILE"]}"
+
+if [[ "${OPTS["ACTION"]}" = "INSTALL" ]]; then
+	echo "install..."
+
+	if [[ -f "${OPTS["FPATH"]}" ]]; then
+		echo "file exists. try --modify instead"
+		exit 4
+	fi
+
+	if [[ "${OPTS["Name"]}" = "" ]]; then
+		NAME="${FILE%%.*}"
+		OPTS["Name"]="${NAME^}"
+		unset NAME
+	fi
+
+	if [[ "${OPTS["Exec"]}" = "" ]]; then
+		OPTS["Exec"]="$HOME/.local/bin/${OPTS["FILE"]}"
+		if ! [[ -f "${OPTS["Exec"]}" ]]; then
+			echo "Executable for ${OPTS["FILE"]} not located."
+			echo "Please note if --exec is not given, it defaults to ~/.local/bin"
+			echo "Cancelled."
+			exit -55
+		fi
+	fi
+
+	touch "${OPTS["FPATH"]}"
+	echo "[Desktop Entry]" > "${OPTS["FPATH"]}"
+	echo "Name=${OPTS["Name"]}" >> "${OPTS["FPATH"]}"
+	echo "Type=${OPTS["Type"]}" >> "${OPTS["FPATH"]}"
+	echo "Terminal=${OPTS["Terminal"]}" >> "${OPTS["FPATH"]}"
+	echo "PrefersNonDefaultGPU=${OPTS["PrefersNonDefaultGPU"]}" >> "${OPTS["FPATH"]}"
+	echo "Icon=${OPTS["Icon"]}" >> "${OPTS["FPATH"]}"
+	echo "Exec=${OPTS["Exec"]}" >> "${OPTS["FPATH"]}"
+	echo "Categories=${OPTS["Categories"]}" >> "${OPTS["FPATH"]}"
+	echo "MimeType=${OPTS["MimeType"]}" >> "${OPTS["FPATH"]}"
+	echo "StartupWMClass=${OPTS["StartupWMClass"]}" >> "${OPTS["FPATH"]}"
+
+
+	
+
+elif [[ "${OPTS["ACTION"]}" = "MODIFY" ]]; then
+	echo "modify..."
+	
+	if ! [[ -f "${OPTS["FPATH"]}" ]]; then
+		echo "file does not exist. Try --install instead"
+		exit 4
+	fi
+
+	for key in "${!GIVEN[@]}"; do
+	#	grep "$key" "${OPTS["FPATH"]}"
+		sed -i -r "s/$key.*/$key=${OPTS["$key"]}/" "${OPTS["FPATH"]}"
+	done
+	
+	cat "${OPTS["FPATH"]}"
+
+
+elif [[ "${OPTS["ACTION"]}" = "REMOVE" ]]; then
+	
+	if [[ "${OPTS["FILE"]: -8}" != ".desktop" ]]; then
+		echo "Not a desktop entry"
+		exit -9
+	elif ! [[ -f "${OPTS["FPATH"]}" ]]; then
+		echo "File does not exist"
+		exit 3
+	else
+		rm "${OPTS["FPATH"]}"
+		echo "File ${OPTS["FILE"]} has been removed"
+		exit 0
+	fi
+
+else
+	echo "invalid option."
+	echo "Valid options are:"
+ 	echo "--install: create a new .desktop entry"
+ 	echo "--modify: modify existing .desktop entry"
+ 	echo "--remove: remove a .desktop entry"
+ 	echo -e "Note the --remove action can only take the --dir option indicating where the entry is located. If anything else is passed the script will return an error. --dir defaults to INSTALL_DIR"
+fi
+
+
+#echo "INSTALL_DIR = ${OPTS["INSTALL_DIR"]}"
+#echo "TYPE = ${OPTS["Type"]}"
+#echo "TERMINAL = ${OPTS["Terminal"]}"
+#echo "PREFERSNDGPU = ${OPTS["PrefersNonDefaultGPU"]}"
+#echo "ICON = ${OPTS["Icon"]}"
+#echo "EXEC = ${OPTS["Exec"]}"
+#echo "NAME = ${OPTS["Name"]}"
+#echo "CATEGORIES = ${OPTS["Categories"]}"
+#echo "MIMETYPE = ${OPTS["MimeType"]}"
+#echo "WMCLASS = ${OPTS["StartupWMClass"]}"
+#echo "FILE = ${OPTS["FILE"]}"
+#echo "ACTION = ${OPTS["ACTION"]}"
+
+
+
+
