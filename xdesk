@@ -5,7 +5,7 @@
 #
 # 	xdesk ACTION [OPTS] --file FILE
 # 
-# --file: target for the .desktop entry
+# -f --file: target for the .desktop entry
 #
 # OPTS are:
 # 	-n --name: .desktop Name key
@@ -64,12 +64,11 @@ function parse_option(){
 declare -A VARS      # utilities like install_dir, file etc
 declare -A OPTS      # Stores option values.
 declare -A GIVEN     # This tracks whether or not an option was given by the user
-		     # In order to avoid changing options that were not given, 
+		     # in order to avoid changing options that were not given, 
 		     # and are different in the file from the default values.
 
 # Variables that will hold default values
 VARS["INSTALL_DIR"]="$HOME/.local/share/applications"
-
 OPTS["Type"]="Application"
 OPTS["Terminal"]="false"
 OPTS["PrefersNonDefaultGPU"]="true"
@@ -306,7 +305,7 @@ elif [[ "${VARS["ACTION"]}" = "DISPLAY" ]]; then
 elif [[ "${VARS["ACTION"]}" = "LIST" ]]; then
 
 	if [[ -d "${VARS["INSTALL_DIR"]}" ]]; then
-		ls -A "${VARS["INSTALL_DIR"]}"
+		ls -A "${VARS["INSTALL_DIR"]}" | grep -i -n -T --color='never' ".*.desktop"
 	else
 		echo "Directory does not exist"
 		exit 3
