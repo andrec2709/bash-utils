@@ -33,7 +33,7 @@ function show_help(){
 	echo -e "\t\t-n --name: .desktop Name Key"
 	echo -e "\t\t-e --exec: .desktop Exec Key"
 	echo -e "\t\t-i --icon: .desktop Icon Key"
-	echo -e "\t\t-T --terminal: sets Terminal key to true"
+	echo -e "\t\t-T --terminal: sets Terminal key"
 	echo -e "\t\t-t --type: .desktop Type Key"
 	echo -e "\t\t-G --non-default-gpu: sets PrefersNonDefaultGPU key to false"
 	echo -e "\t\t-c --categories: .desktop Categories Key"
@@ -49,7 +49,6 @@ function show_help(){
 	echo "Defaults:"
 	echo -e "\t\t--dir: $HOME/.local/share/applications"
 	echo -e "\t\t--type: Application"
-	echo -e "\t\t--terminal: false"
 	echo -e "\t\t--non-default-gpu: true"
 	echo -e "\t\t--exec: FILE"
 	echo -e "\t\t--name: \${FILE%%.*} (FILE without extension)"
@@ -66,7 +65,6 @@ declare -A GIVEN     # This tracks whether or not an option was given by the use
 # Variables that will hold default values
 VARS["INSTALL_DIR"]="$HOME/.local/share/applications"
 OPTS["Type"]="Application"
-OPTS["Terminal"]="false"
 OPTS["PrefersNonDefaultGPU"]="true"
 OPTS["Exec"]=""
 OPTS["Name"]=""
@@ -85,8 +83,8 @@ VARS["ACTION"]="INSTALL"
 
 # Defining acceptable options/parameters and parsing arguments
 TEMP=$(getopt \
-	-o 'n:e:i:Tt:Gc:m:w:d:f:h' \
-	-l 'install,modify,remove,display,list,help,file:,name:,exec:,icon:,terminal,type:, \
+	-o 'n:e:i:T:t:Gc:m:w:d:f:h' \
+	-l 'install,modify,remove,display,list,help,file:,name:,exec:,icon:,terminal:,type:, \
 	non-default-gpu,categories:,mimetype:,wmclass:,dir:' \
 	-n "$0" -- "$@")
 
@@ -164,11 +162,11 @@ while true; do
 			continue
 			;;
 		"-T" | "--terminal")
-			OPTS["Terminal"]="true"
 
+			OPTS["Terminal"]="$2"
 			GIVEN["Terminal"]="true"
-			
-			shift
+
+			shift 2
 			continue
 			;;
 		"-t" | "--type")
@@ -335,21 +333,6 @@ else
 	show_help
 	exit 1
 fi
-
-
-#echo "INSTALL_DIR = ${VARS["INSTALL_DIR"]}"
-#echo "TYPE = ${OPTS["Type"]}"
-#echo "TERMINAL = ${OPTS["Terminal"]}"
-#echo "PREFERSNDGPU = ${OPTS["PrefersNonDefaultGPU"]}"
-#echo "ICON = ${OPTS["Icon"]}"
-#echo "EXEC = ${OPTS["Exec"]}"
-#echo "NAME = ${OPTS["Name"]}"
-#echo "CATEGORIES = ${OPTS["Categories"]}"
-#echo "MIMETYPE = ${OPTS["MimeType"]}"
-#echo "WMCLASS = ${OPTS["StartupWMClass"]}"
-#echo "FILE = ${VARS["FILE"]}"
-#echo "ACTION = ${VARS["ACTION"]}"
-
 
 
 
