@@ -1,0 +1,62 @@
+#!/bin/bash
+#
+#
+
+
+# vars required to create GUI like notify-send
+
+export DISPLAY=:0
+export XAUTHORITY=/run/user/1000/gdm/Xauthority
+export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/1000/bus"
+export XDG_RUNTIME_DIR="/run/user/1000"
+
+##
+
+
+
+
+if [[ "$1" = "install" ]]; then
+	
+	if ! [[ -f "$HOME/pkgs.txt" ]]; then
+		echo "pkgs.txt does not exist, run 'pkglist backup' instead"
+		exit 1
+	fi
+
+	echo "installing..."
+
+	mapfile -t packages < <(awk '$2=="install" {print $1}' $HOME/pkgs.txt)
+	
+	sudo apt update
+	sudo apt install "${packages[@]}"
+
+	status=$?
+
+	if [[ $status -ne 0 ]];  then
+		
+		echo "Something went wrong. Error code: $status"
+
+	else
+
+		echo "successfully installed packages"
+		notify-send -a "User script" "pkglist" "Completed pkglist installation" 
+
+	fi
+
+
+elif [[ "$1" = "backup" ]]; then
+
+	echo "backing up..."
+
+	dpkg --get-selections > $HOME/pkgs.txt
+
+	notify-send -a "User script" "pkglist" "Completed pkglist backup" 
+
+else
+
+	echo -e "\tHow to use:"
+	echo -e "\t\tpkglist backup|install"
+	echo -e "\tThis program creates a list of all installed packages. You can then install all packages by running the install opt"
+
+fi
+
+
