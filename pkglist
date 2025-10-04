@@ -25,9 +25,25 @@ if [[ "$1" = "install" ]]; then
 	echo "installing..."
 
 	mapfile -t packages < <(awk '$2=="install" {print $1}' $HOME/pkgs.txt)
+
+	available_packages=()
+
+	for pkg in "${packages[@]}"; do
+
+		apt-cache show $pkg > /dev/null 2>&1
+		status=$?
+		
+		if [[ $status -ne 0 ]]; then
+			continue
+		else
+			available_packages+=("$pkg")
+		fi
 	
+	done
+	
+	echo "Total: ${#available_packages} pkgs"
 	sudo apt update
-	sudo apt install "${packages[@]}"
+	sudo apt install "${available_packages[@]}"
 
 	status=$?
 
