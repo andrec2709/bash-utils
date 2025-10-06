@@ -130,7 +130,7 @@ while true; do
 		"-f" | "--file")
 			FILE="$(basename $2)"
 			FILE="${FILE%%.*}"
-			FILE="${FILE}.desktop"
+			#FILE="${FILE}.desktop"
 			VARS["FILE"]="$FILE"
 			unset FILE
 
@@ -225,7 +225,7 @@ while true; do
 	esac
 done
 
-VARS["FPATH"]="${VARS["INSTALL_DIR"]}/${VARS["FILE"]}"
+VARS["FPATH"]="${VARS["INSTALL_DIR"]}/${VARS["FILE"]}.desktop"
 
 if [[ "${VARS["ACTION"]}" = "INSTALL" ]]; then
 
