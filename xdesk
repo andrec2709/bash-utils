@@ -130,8 +130,8 @@ while true; do
 		"-f" | "--file")
 			FILE="$(basename $2)"
 			FILE="${FILE%%.*}"
-			#FILE="${FILE}.desktop"
 			VARS["FILE"]="$FILE"
+
 			unset FILE
 
 			shift 2
@@ -291,7 +291,7 @@ elif [[ "${VARS["ACTION"]}" = "MODIFY" ]]; then
 
 elif [[ "${VARS["ACTION"]}" = "REMOVE" ]]; then
 	
-	if [[ "${VARS["FILE"]: -8}" != ".desktop" ]]; then
+	if [[ "${VARS["FPATH"]: -8}" != ".desktop" ]]; then
 		echo "Not a desktop entry"
 		exit 3
 	elif ! [[ -f "${VARS["FPATH"]}" ]]; then
